@@ -21,8 +21,8 @@
     --card-border: rgba(255, 255, 255, 0.08);
     --card-hover: rgba(255, 255, 255, 0.06);
     --card-selected: rgba(255, 255, 255, 0.10);
-    --font-heading: 'Inter', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --font-heading: 'JetBrains Mono', monospace;
+    --font-body: 'JetBrains Mono', monospace;
     --font-mono: 'JetBrains Mono', monospace;
 }
 
