@@ -230,24 +230,22 @@ async function calculateScore() {
 
     // Set real waitlist count
     const waitlistCount = document.getElementById('waitlistCount');
-    if (supabaseClient) {
-        try {
-            // Fetch the exact row count from Supabase
-            const { count, error } = await supabaseClient
-                .from('waitlist')
-                .select('*', { count: 'exact', head: true });
+    waitlistCount.textContent = '1,900'; // Default fallback
 
-            if (!error && count !== null) {
-                const total = 1900 + count;
-                waitlistCount.textContent = total.toLocaleString();
-            } else {
-                waitlistCount.textContent = '1,900'; // Fallback
-            }
-        } catch (e) {
-            waitlistCount.textContent = '1,900'; // Fallback
-        }
-    } else {
-        waitlistCount.textContent = '1,900'; // Fallback if blocked
+    if (supabaseClient) {
+        // Fetch the exact row count from Supabase without blocking the UI
+        supabaseClient
+            .from('waitlist')
+            .select('*', { count: 'exact', head: true })
+            .then(({ count, error }) => {
+                if (!error && count !== null) {
+                    const total = 1900 + count;
+                    waitlistCount.textContent = total.toLocaleString();
+                }
+            })
+            .catch(e => {
+                console.warn("Supabase fetch failed, using fallback.", e);
+            });
     }
 
     // Animate categories
