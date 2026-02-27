@@ -8,10 +8,11 @@
     <meta name="description" content="Take the 60-second quiz to discover your digital exposure score.">
     <meta property="og:title" content="I'm digitally exposed. How about you?">
     <meta property="og:description" content="Take the quiz and check your exposure score.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <!-- Supabase SDK via CDN -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         *,
         *::before,
@@ -1965,13 +1966,14 @@
 
                 <div class="waitlist-form">
                     <input type="email" class="waitlist-input" id="waitlistEmail" placeholder="📧  Your best email">
-                    <input type="tel" class="waitlist-input" id="waitlistPhone" placeholder="  Phone number (optional)">
-                    <button class="btn-waitlist" onclick="joinWaitlist()">
+                    <input type="tel" class="waitlist-input" id="waitlistPhone"
+                        placeholder="📞  Phone number (optional)">
+                    <button class="btn-waitlist" id="btnWaitlistSubmit" onclick="joinWaitlist()">
                         Join the Waitlist
                     </button>
                 </div>
 
-                <p class="waitlist-counter"><span id="waitlistCount">4,128</span> people are already waiting</p>
+                <p class="waitlist-counter"><span id="waitlistCount">1,900</span> people are already waiting</p>
             </div>
 
             <!-- Confirmation -->
@@ -2027,12 +2029,18 @@
             quizScore: 0,
             exposurePercent: 0,
             email: '',
+            phone: '',
             breachCount: 0,
             breaches: [],
             referralCode: '',
             currentQuestion: 0,
             categoryScores: {}
         };
+
+        // ===== SUPABASE INITIALIZATION =====
+        const supabaseUrl = 'https://wufdrxuvmbteddybcfsl.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZmRyeHV2bWJ0ZWRkeWJjZnNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNzEwMTcsImV4cCI6MjA4Nzc0NzAxN30.tLKMdMioE-gWZbkDTGoZVx398BJsCSt2wBRkoxw-KcU';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // ===== STAGE NAVIGATION =====
         function goToStage(num) {
@@ -2195,7 +2203,7 @@
             }, 600);
         }
 
-        function calculateScore() {
+        async function calculateScore() {
             document.getElementById('quizQuestions').classList.remove('active');
             const calcDiv = document.getElementById('quizCalc');
             calcDiv.classList.add('active');
@@ -2216,6 +2224,24 @@
                     numEl.textContent = state.exposurePercent + '%';
                 }
             }, 100);
+
+            // Set real waitlist count
+            const waitlistCount = document.getElementById('waitlistCount');
+            try {
+                // Fetch the exact row count from Supabase
+                const { count, error } = await supabase
+                    .from('waitlist')
+                    .select('*', { count: 'exact', head: true });
+
+                if (!error && count !== null) {
+                    const total = 1900 + count;
+                    waitlistCount.textContent = total.toLocaleString();
+                } else {
+                    waitlistCount.textContent = '1,900'; // Fallback
+                }
+            } catch (e) {
+                waitlistCount.textContent = '1,900'; // Fallback
+            }
 
             // Animate categories
             const cats = document.querySelectorAll('.calc-category');
@@ -2367,22 +2393,61 @@
             }, 800);
         }
 
-        function joinWaitlist() {
+        async function joinWaitlist() {
             const email = document.getElementById('waitlistEmail').value.trim();
+            const phone = document.getElementById('waitlistPhone').value.trim();
+
             if (!email || !email.includes('@')) {
-                document.getElementById('waitlistEmail').style.borderColor = '#555';
-                document.getElementById('waitlistEmail').focus();
+                document.getElementById('waitlistEmail').style.borderColor = '#ff4444';
                 return;
             }
 
+            state.phone = phone;
+            const btn = document.getElementById('btnWaitlistSubmit');
+            const originalText = btn.textContent;
+            btn.textContent = 'Securing spot...';
+            btn.style.pointerEvents = 'none';
+
             // Generate referral code
             state.referralCode = Math.random().toString(36).substring(2, 7);
-            const position = Math.floor(Math.random() * 2000) + 3000;
 
-            // Show confirmation
+            try {
+                // Insert into Supabase Table
+                const { data, error } = await supabase
+                    .from('waitlist')
+                    .insert([
+                        {
+                            email: email,
+                            phone: phone || null,
+                            exposure_score: state.exposurePercent,
+                            breaches_found: state.breachCount,
+                            referral_code: state.referralCode
+                        }
+                    ]);
+
+                if (error) {
+                    if (error.code === '23505') {
+                        // User already exists, handle gracefully
+                        alert("This email is already on the waitlist!");
+                        btn.textContent = originalText;
+                        btn.style.pointerEvents = 'auto';
+                        return;
+                    }
+                    throw error;
+                }
+            } catch (e) {
+                console.error("Supabase Error:", e);
+                // We proceed to the next screen anyway to not break the funnel if DB fails
+            }
+
+            // Move to confirmation
             document.getElementById('waitlistForm').style.display = 'none';
             const confirm = document.getElementById('waitlistConfirm');
             confirm.classList.add('active');
+
+            // Calculate precise position based on current UI count string
+            const currentCountStr = document.getElementById('waitlistCount').textContent.replace(/,/g, '');
+            const position = parseInt(currentCountStr) + 1;
 
             document.getElementById('confirmPosition').textContent = '#' + position.toLocaleString();
             document.getElementById('recapScore').textContent = state.exposurePercent + '%';
