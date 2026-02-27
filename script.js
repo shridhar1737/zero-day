@@ -418,8 +418,8 @@ async function joinWaitlist() {
 
     if (supabaseClient) {
         try {
-            // Insert into Supabase Table
-            const { data, error } = await supabaseClient
+            // Insert into Supabase Table (with a timeout to prevent hanging UI)
+            const insertPromise = supabaseClient
                 .from('waitlist')
                 .insert([
                     {
@@ -431,7 +431,13 @@ async function joinWaitlist() {
                     }
                 ]);
 
-            if (error) {
+            const timeoutPromise = new Promise((resolve) => {
+                setTimeout(() => resolve({ error: { message: 'timeout' } }), 2500);
+            });
+
+            const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
+
+            if (error && error.message !== 'timeout') {
                 if (error.code === '23505') {
                     // User already exists, handle gracefully
                     alert("This email is already on the waitlist!");
