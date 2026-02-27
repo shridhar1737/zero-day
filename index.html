@@ -1871,13 +1871,6 @@
 
                 <p class="breach-email-ref">Results for <span id="breachEmailDisplay">user@email.com</span></p>
 
-                <div class="breach-cards" id="breachCards"></div>
-
-                <div class="compromised-section">
-                    <p class="compromised-title">COMPROMISED DATA TYPES</p>
-                    <div class="compromised-tags" id="compromisedTags"></div>
-                </div>
-
                 <div class="emotional-bridge">
                     <p class="emotional-text">
                         This is just your email. One data point.<br><br>
@@ -2297,15 +2290,6 @@
         }
 
         // ===== STAGE 3: BREACH CHECK =====
-        const breachDB = [
-            { name: 'LinkedIn', year: '2021', data: ['Email Address', 'Password', 'Phone Number'], count: '164M' },
-            { name: 'Adobe', year: '2013', data: ['Email Address', 'Password', 'Username'], count: '153M' },
-            { name: 'Canva', year: '2019', data: ['Email Address', 'Name', 'Location'], count: '137M' },
-            { name: 'Wattpad', year: '2020', data: ['Email Address', 'Password', 'IP Address'], count: '268M' },
-            { name: 'Gravatar', year: '2020', data: ['Email Address', 'Username'], count: '114M' },
-            { name: 'Dropbox', year: '2012', data: ['Email Address', 'Password'], count: '68M' },
-            { name: 'MyFitnessPal', year: '2018', data: ['Email Address', 'Password', 'Username'], count: '144M' }
-        ];
 
         // Psychological Hook: Deterministic breach results based on quiz score
         function checkBreach() {
@@ -2326,9 +2310,6 @@
             else if (state.exposurePercent <= 95) numBreaches = 2;
             else numBreaches = 3;
 
-            // Sort and assign from mock DB
-            const shuffled = breachDB.sort(() => 0.5 - Math.random());
-            state.breaches = shuffled.slice(0, numBreaches);
             state.breachCount = numBreaches;
 
             // Hide input, show loading
@@ -2363,34 +2344,6 @@
 
             // Email display
             document.getElementById('breachEmailDisplay').textContent = state.email;
-
-            // Render breach cards
-            const cardsContainer = document.getElementById('breachCards');
-            cardsContainer.innerHTML = state.breaches.map((b, i) => `
-                <div class="breach-card" style="transition-delay: ${i * 200 + 500}ms">
-                    <div class="breach-card-header">
-                        <div class="breach-card-dot"></div>
-                        <span class="breach-card-name">${b.name}</span>
-                        <span class="breach-card-year">(${b.year})</span>
-                    </div>
-                    <p class="breach-card-data">Data: ${b.data.join(', ')}</p>
-                    <p class="breach-card-affected">${b.count} accounts affected</p>
-                </div>
-            `).join('');
-
-            // Animate cards
-            setTimeout(() => {
-                document.querySelectorAll('.breach-card').forEach(card => {
-                    card.classList.add('visible');
-                });
-            }, 300);
-
-            // Compromised tags
-            const allData = [...new Set(state.breaches.flatMap(b => b.data))];
-            const tagsContainer = document.getElementById('compromisedTags');
-            tagsContainer.innerHTML = allData.map(d => `
-                <span class="compromised-tag">${d} ✓</span>
-            `).join('');
         }
 
         function showNoBreachResults() {
