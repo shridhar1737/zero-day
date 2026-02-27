@@ -72,7 +72,8 @@
             display: none;
             min-height: 100vh;
             opacity: 0;
-            transition: opacity 0.8s ease;
+            transform: scale(0.98) translateY(10px);
+            transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -83,6 +84,7 @@
         .stage.active {
             display: flex;
             opacity: 1;
+            transform: scale(1) translateY(0);
         }
 
         .stage-inner {
@@ -2087,7 +2089,7 @@
             sentences[currentThreat].className = 'threat-sentence visible';
         }
 
-        setInterval(rotateThreat, 3500);
+        setInterval(rotateThreat, 2000);
 
         // Terminal timer
         let terminalSeconds = 0;
@@ -2295,18 +2297,8 @@
             }, 500);
         }
 
-        // ===== STAGE 3: BREACH CHECK =====
-        const breachDB = [
-            { name: 'LinkedIn', year: '2021', data: ['Email', 'Password', 'Name'], count: '164M' },
-            { name: 'Adobe', year: '2013', data: ['Email', 'Password', 'Username'], count: '153M' },
-            { name: 'Canva', year: '2019', data: ['Email', 'Name', 'Location'], count: '137M' },
-            { name: 'Wattpad', year: '2020', data: ['Email', 'Password', 'IP Address'], count: '268M' },
-            { name: 'Gravatar', year: '2020', data: ['Email', 'Username'], count: '114M' },
-            { name: 'Dropbox', year: '2012', data: ['Email', 'Password'], count: '68M' },
-            { name: 'MyFitnessPal', year: '2018', data: ['Email', 'Password', 'Username'], count: '144M' }
-        ];
-
-        function checkBreach() {
+        // Real-time breach check using XposeOrNot API
+        async function checkBreach() {
             const email = document.getElementById('emailInput').value.trim();
             if (!email || !email.includes('@')) {
                 document.getElementById('emailInput').style.borderColor = '#555';
@@ -2322,7 +2314,7 @@
             const loading = document.getElementById('breachLoading');
             loading.classList.add('active');
 
-            // Animate loading lines
+            // Animate loading lines sequentially
             const lines = ['loadLine1', 'loadLine2', 'loadLine3', 'loadLine4'];
             lines.forEach((id, i) => {
                 setTimeout(() => {
@@ -2330,18 +2322,44 @@
                 }, 600 * (i + 1));
             });
 
-            // Simulate breach check
-            setTimeout(() => {
+            // Perform the API call in parallel with the minimum animation time
+            const minimumLoadingTime = new Promise(resolve => setTimeout(resolve, 3000));
+
+            try {
+                const apiResponse = await fetch(`https://api.xposeornot.com/v1/check-email/${encodeURIComponent(email)}`);
+                await minimumLoadingTime; // Ensure the user sees the animations
+
                 loading.classList.remove('active');
 
-                // Random 2-5 breaches
-                const numBreaches = Math.floor(Math.random() * 4) + 2;
-                const shuffled = breachDB.sort(() => 0.5 - Math.random());
-                state.breaches = shuffled.slice(0, numBreaches);
-                state.breachCount = numBreaches;
-
-                showBreachResults();
-            }, 3500);
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    if (data.breaches && data.breaches.length > 0) {
+                        // Map the simple string array from XposeOrNot into our visual card format
+                        state.breaches = data.breaches.map(breachName => ({
+                            name: breachName,
+                            year: 'Confirmed', // API doesn't return year in this endpoints
+                            data: ['Email Address', 'Password', 'Personal Information'], // Standard assumptions for visual
+                            count: 'Unknown'
+                        }));
+                        state.breachCount = data.breaches.length;
+                        showBreachResults();
+                    } else {
+                        showNoBreachResults();
+                    }
+                } else if (apiResponse.status === 404) {
+                    // XposeOrNot returns 404 if the email is clean
+                    await minimumLoadingTime;
+                    loading.classList.remove('active');
+                    showNoBreachResults();
+                } else {
+                    // Fallback for unexpected errors
+                    throw new Error('API Error');
+                }
+            } catch (error) {
+                console.error("Breach check failed or no data:", error);
+                loading.classList.remove('active');
+                showNoBreachResults();
+            }
         }
 
         function showBreachResults() {
@@ -2381,6 +2399,12 @@
             tagsContainer.innerHTML = allData.map(d => `
                 <span class="compromised-tag">${d} ✓</span>
             `).join('');
+        }
+
+        function showNoBreachResults() {
+            const results = document.getElementById('noBreachResults');
+            results.classList.add('active');
+            document.getElementById('noBreachScore').textContent = state.exposurePercent + '%';
         }
 
         // ===== STAGE 4: REVEAL + WAITLIST =====
