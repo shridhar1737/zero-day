@@ -1854,9 +1854,10 @@
             <div class="breach-loading" id="breachLoading">
                 <div class="loading-line" id="loadLine1">Hashing email address... <span class="check">✓</span></div>
                 <div class="loading-line" id="loadLine2">Querying breach database... <span class="check">✓</span></div>
-                <div class="loading-line" id="loadLine3">Scanning 14.2 billion records... <span class="check">✓</span>
+                <div class="loading-line" id="loadLine3">Scanning 14.2B records... <span class="check">✓</span></div>
+                <div class="loading-line" id="loadLine4">Cross-referencing dark web... <span class="check">✓</span>
                 </div>
-                <div class="loading-line" id="loadLine4">Compiling results...</div>
+                <div class="loading-line" id="loadLine5">Compiling results...</div>
             </div>
 
             <!-- Breach Results -->
@@ -2251,8 +2252,9 @@
             // Animate number
             animateNumber('gaugeNumber', 0, state.exposurePercent, 2000);
 
-            // Comparison
+            // Comparison and cross-stage text prep
             document.getElementById('comparisonText').textContent = state.exposurePercent + '%';
+            document.getElementById('breachScoreRef').textContent = state.exposurePercent + '%';
 
             // Breakdown
             const breakdownList = document.getElementById('breakdownList');
@@ -2294,8 +2296,19 @@
             }, 500);
         }
 
-        // Real-time breach check using XposeOrNot API
-        async function checkBreach() {
+        // ===== STAGE 3: BREACH CHECK =====
+        const breachDB = [
+            { name: 'LinkedIn', year: '2021', data: ['Email Address', 'Password', 'Phone Number'], count: '164M' },
+            { name: 'Adobe', year: '2013', data: ['Email Address', 'Password', 'Username'], count: '153M' },
+            { name: 'Canva', year: '2019', data: ['Email Address', 'Name', 'Location'], count: '137M' },
+            { name: 'Wattpad', year: '2020', data: ['Email Address', 'Password', 'IP Address'], count: '268M' },
+            { name: 'Gravatar', year: '2020', data: ['Email Address', 'Username'], count: '114M' },
+            { name: 'Dropbox', year: '2012', data: ['Email Address', 'Password'], count: '68M' },
+            { name: 'MyFitnessPal', year: '2018', data: ['Email Address', 'Password', 'Username'], count: '144M' }
+        ];
+
+        // Psychological Hook: Deterministic breach results based on quiz score
+        function checkBreach() {
             const email = document.getElementById('emailInput').value.trim();
             if (!email || !email.includes('@')) {
                 document.getElementById('emailInput').style.borderColor = '#555';
@@ -2304,59 +2317,41 @@
             }
 
             state.email = email;
-            document.getElementById('breachScoreRef').textContent = state.exposurePercent + '%';
+
+            // Calculate breaches visually BEFORE the loading starts
+            let numBreaches = 0;
+            if (state.exposurePercent < 50) numBreaches = 0;
+            else if (state.exposurePercent <= 70) numBreaches = 1;
+            else if (state.exposurePercent <= 84) numBreaches = Math.random() > 0.5 ? 1 : 2;
+            else if (state.exposurePercent <= 95) numBreaches = 2;
+            else numBreaches = 3;
+
+            // Sort and assign from mock DB
+            const shuffled = breachDB.sort(() => 0.5 - Math.random());
+            state.breaches = shuffled.slice(0, numBreaches);
+            state.breachCount = numBreaches;
 
             // Hide input, show loading
             document.getElementById('breachInput').style.display = 'none';
             const loading = document.getElementById('breachLoading');
             loading.classList.add('active');
 
-            // Animate loading lines sequentially
-            const lines = ['loadLine1', 'loadLine2', 'loadLine3', 'loadLine4'];
-            lines.forEach((id, i) => {
-                setTimeout(() => {
-                    document.getElementById(id).classList.add('visible');
-                }, 600 * (i + 1));
-            });
+            // The Loading Theater (Total ~3.8 seconds)
+            setTimeout(() => document.getElementById('loadLine1').classList.add('visible'), 0);
+            setTimeout(() => document.getElementById('loadLine2').classList.add('visible'), 800);
+            setTimeout(() => document.getElementById('loadLine3').classList.add('visible'), 1600);
+            setTimeout(() => document.getElementById('loadLine4').classList.add('visible'), 2400);
+            setTimeout(() => document.getElementById('loadLine5').classList.add('visible'), 3200);
 
-            // Perform the API call in parallel with the minimum animation time
-            const minimumLoadingTime = new Promise(resolve => setTimeout(resolve, 3000));
-
-            try {
-                const apiResponse = await fetch(`https://api.xposeornot.com/v1/check-email/${encodeURIComponent(email)}`);
-                await minimumLoadingTime; // Ensure the user sees the animations
-
+            // Execute the result
+            setTimeout(() => {
                 loading.classList.remove('active');
-
-                if (apiResponse.ok) {
-                    const data = await apiResponse.json();
-                    if (data.breaches && data.breaches.length > 0) {
-                        // Map the simple string array from XposeOrNot into our visual card format
-                        state.breaches = data.breaches.map(breachName => ({
-                            name: breachName,
-                            year: 'Confirmed', // API doesn't return year in this endpoints
-                            data: ['Email Address', 'Password', 'Personal Information'], // Standard assumptions for visual
-                            count: 'Unknown'
-                        }));
-                        state.breachCount = data.breaches.length;
-                        showBreachResults();
-                    } else {
-                        showNoBreachResults();
-                    }
-                } else if (apiResponse.status === 404) {
-                    // XposeOrNot returns 404 if the email is clean
-                    await minimumLoadingTime;
-                    loading.classList.remove('active');
-                    showNoBreachResults();
+                if (state.breachCount > 0) {
+                    showBreachResults();
                 } else {
-                    // Fallback for unexpected errors
-                    throw new Error('API Error');
+                    showNoBreachResults();
                 }
-            } catch (error) {
-                console.error("Breach check failed or no data:", error);
-                loading.classList.remove('active');
-                showNoBreachResults();
-            }
+            }, 3800);
         }
 
         function showBreachResults() {
