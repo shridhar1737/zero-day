@@ -226,7 +226,7 @@ async function calculateScore() {
             clearInterval(interval);
             numEl.textContent = state.exposurePercent + '%';
         }
-    }, 100);
+    }, 60);
 
     // Set real waitlist count
     const waitlistCount = document.getElementById('waitlistCount');
@@ -253,14 +253,14 @@ async function calculateScore() {
     // Animate categories
     const cats = document.querySelectorAll('.calc-category');
     cats.forEach((cat, i) => {
-        setTimeout(() => cat.classList.add('visible'), 2500 + (i * 150));
+        setTimeout(() => cat.classList.add('visible'), 1200 + (i * 100));
     });
 
     // Show results
     setTimeout(() => {
         calcDiv.classList.remove('active');
         showResults();
-    }, 4500);
+    }, 2200);
 }
 
 function showResults() {
